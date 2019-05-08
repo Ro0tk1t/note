@@ -11,3 +11,11 @@ do
   sed -i "s/source string or regex/destination string/g" $x
 done
 ```
+
+
+文件太大无法打开，怎样就地删除前面的很多行内容?
+-----------------------------------------------
+```bash
+# 删除前1到100000行
+sed -i '1,100000d' access.log
+```
