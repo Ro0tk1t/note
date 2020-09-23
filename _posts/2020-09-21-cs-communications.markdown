@@ -5,7 +5,9 @@ date:   2020-09-21
 categories: socketio gRPC restful jsonp
 ---
 
-`Socketio`, 最初为nodejs使用的一种端到端的通信方式，具有持久连接，掉线自动重连，基于事件驱动等特性。后其他语言也能使用。  
+## `Socketio`  
+
+最初为nodejs使用的一种端到端的通信方式，具有持久连接，掉线自动重连，基于事件驱动等特性。后其他语言也能使用。  
 其默认自带有`connect`、`message`、`disconnect`等事件。  
 使用`event`方法和`on`方法可实现注册事件。  
 `emit`方法和`send`方法都可以发送数据，不同的是`emit`方法可以指定任意事件,看源码可以知道`send`方法最终还是调用的emit方法。  
@@ -39,7 +41,7 @@ console.log("server started on port 8080");
 server.listen(8080); 
 ```
 
-`python3`异步版服务端代码如下：
+`python3`异步版服务端代码如下，同步版写法基本一样：
 ```python
 from aiohttp import web
 
@@ -117,4 +119,150 @@ async def test(sio, loop):
 
 if __name__ == '__main__':
     main()
+```
+
+
+## gRPC  
+
+是 Google 开源的基于 Protobuf 和 Http2.0 协议的通信框架，  
+python里使用需要安装三个包`grpcio、protobuf、grpcio_tools`  
+protobuf协议文件定义类似如下(dating.proto)：  
+```golang
+syntax = "proto3";
+
+package date;
+
+
+service Dating{
+    rpc Eating (Eat) returns (Feel){}
+    rpc WatchMovie(Movie) returns (Feel){}
+}
+
+
+message Eat{
+    string food = 1;
+}
+
+message Movie{
+    string film = 1;
+}
+
+message Feel{
+    bool feeling = 1;
+}
+```
+当未定义syntax时回默认使用proto2版本。  
+然后编译proto文件:
+```bash
+python3 -m grpc_tools.protoc -I . --python_out=. --grpc_python_out=. dating.proto
+```
+会生成dating_pb2.py和dating_pb2_grpc.py的文件，server和client会进行调用。  
+要使用包括内嵌消息等高级用法可以看protobuf的 [官方文档](https://developers.google.com/protocol-buffers/docs/proto3)  
+
+接着是服务端相关代码(server.py)：
+```python
+import grpc
+import logging
+import dating_pb2
+import dating_pb2_grpc
+
+from concurrent import futures
+
+
+class Servicer(dating_pb2_grpc.DatingServicer):
+    def Eating(self, request, context):
+        logger.debug(f'[*] we are eating {request.food}')
+        return dating_pb2.Feel(feeling=True)
+
+    def WatchMovie(self, request, context):
+        logger.debug(f'[*] we are watching 《{request.film}》')
+        return dating_pb2.Feel(feeling=True)
+
+
+def start():
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=5))
+    dating_pb2_grpc.add_DatingServicer_to_server(Servicer(), server)
+    server.add_insecure_port('[::]:6666')
+    server.start()
+    server.wait_for_termination()
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger('us')
+logger.setLevel(logging.DEBUG)
+start()
+```
+最后是客户端相关代码(client.py)：
+```python
+import grpc
+import dating_pb2
+import dating_pb2_grpc
+
+
+def start():
+    with grpc.insecure_channel('localhost:6666') as channel:
+        stub = dating_pb2_grpc.DatingStub(channel)
+        eat_feeling = stub.Eating(dating_pb2.Eat(food='steak'))
+        film_feeling = stub.WatchMovie(dating_pb2.Movie(film='星际穿越'))
+    if eat_feeling.feeling and film_feeling.feeling:
+        print('[+]  we think the food and the film is all great.')
+
+start()
+```
+
+最后就能server和client通信了。  
+grpc也是能跨语言的，缺点就是不同语言得分别生成不同的pb文件去调用，这里保持Python的server端，再使用Golang尝试一下client端：  
+先安装go需要的库:  
+```bash
+sudo apt install -y protobuf-compiler
+# 这里需要fq
+go get -u google.golang.org/protobuf/cmd/protoc-gen-go
+go install google.golang.org/protobuf/cmd/protoc-gen-go
+go get -u google.golang.org/grpc/cmd/protoc-gen-go-grpc
+go install google.golang.org/grpc/cmd/protoc-gen-go-grpc
+```
+再生成go版的pb文件，还是使用上面定义的proto文件：
+```bash
+mkdir date
+protoc --go_out=./date/ --go-grpc_out=./date/ --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative dating.proto
+```
+然后date目录里会出现go版的pb文.  
+
+go版client代码如下（client.go）：
+```golang
+package main
+
+import (
+    "log"
+    "context"
+    "time"
+    "google.golang.org/grpc"
+    pb "./date"
+)
+
+const (
+    address = "localhost:6666"
+)
+
+func main(){
+    conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
+    if err != nil{
+        log.Fatalf("connection failed. %v", err)
+    }
+    defer conn.Close()
+    c := pb.NewDatingClient(conn)
+
+    ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+    defer cancel()
+    e, err := c.Eating(ctx, &pb.Eat{Food: "火锅"})
+    if err != nil{
+        log.Fatalf("failed 2 eat")
+    }
+    m, err := c.WatchMovie(ctx, &pb.Movie{Film: "盗梦空间"})
+    if err != nil{
+        log.Fatalf("failed 2 eat")
+    }
+    if e.Feeling && m.Feeling{
+        log.Println("[+]  we think the food and the film is all great.")
+    }
+}
 ```
