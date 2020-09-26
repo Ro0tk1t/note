@@ -266,3 +266,117 @@ func main(){
     }
 }
 ```
+
+# RESTful
+
+全称为(Representational State Transfer)表现层状态转化  
+表现层指资源的表现层，状态转化是指数据的状态和变化转化为HTTP的状态去体现出来。  
+所以resetful的总结就是：
+> 每个URI就是一种资源  
+> 客户端和服务器之间，传递这种资源的某种表现层  
+> 客户端通过HTTP方法，对服务器端资源进行操作，实现"表现层状态转化"  
+
+下面通过flask及其restful插件实现一个简单的restful示例  
+server.py:
+```python
+from flask import Flask, request, json
+from flask_restful import Api, Resource
+
+
+app = Flask('rest')
+api = Api(app)
+
+
+tasks = [
+    {'id': 1, 'name': 'task1'},
+    {'id': 2, 'name': 'task2'},
+    {'id': 3, 'name': 'task3'},
+]
+
+
+class Task_(Resource):
+    def get(self):
+        return tasks
+
+
+class Task(Resource):
+    def get(self, task_id):
+        return [task for task in tasks if (lambda task:task['id'] == task_id)(task)]
+
+    def put(self, task_id):
+        data = request.form['data']
+        task = {'id': task_id}
+        task.update(json.loads(data))
+        tasks.append(task)
+        return task, 201
+
+
+api.add_resource(Task_, '/tasks')
+api.add_resource(Task, '/tasks/<int:task_id>')
+app.run(debug=True)
+```
+由于是通过HTTP方法去操作，所以可以不需要特殊的client，通过浏览器或其他网络连接工具就可以了  
+基于上面的示例，直接使用curl去通信了:
+```bash
+$ curl localhost:5000/tasks
+[
+    {
+        "id": 1,
+        "name": "task1"
+    },
+    {
+        "id": 2,
+        "name": "task2"
+    },
+    {
+        "id": 3,
+        "name": "task3"
+    }
+]
+$ curl localhost:5000/tasks/5 -d 'data={"name": "task5"}' -X PUT -v
+*   Trying ::1:5000...
+* connect to ::1 port 5000 failed: 拒绝连接
+*   Trying 127.0.0.1:5000...
+* Connected to localhost (127.0.0.1) port 5000 (#0)
+> PUT /tasks/5 HTTP/1.1
+> Host: localhost:5000
+> User-Agent: curl/7.72.0
+> Accept: */*
+> Content-Length: 22
+> Content-Type: application/x-www-form-urlencoded
+>
+* upload completely sent off: 22 out of 22 bytes
+* Mark bundle as not supporting multiuse
+* HTTP 1.0, assume close after body
+< HTTP/1.0 201 CREATED
+< Content-Type: application/json
+< Content-Length: 39
+< Server: Werkzeug/1.0.1 Python/3.8.5
+< Date: Sat, 26 Sep 2020 03:54:57 GMT
+<
+{
+    "id": "5",
+    "name": "task5"
+}
+* Closing connection 0
+$ curl localhost:5000/tasks
+[
+  {
+    "id": 1,
+    "name": "task1"
+  },
+  {
+    "id": 2,
+    "name": "task2"
+  },
+  {
+    "id": 3,
+    "name": "task3"
+  },
+  {
+    "id": 5,
+    "name": "task5"
+  }
+]
+```
+先获取task列表（三个task），再通过PUT方法增加一个task，再次获取task列表，发现多了一个id为5的task。  
