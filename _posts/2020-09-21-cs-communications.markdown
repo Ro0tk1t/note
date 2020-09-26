@@ -1,8 +1,8 @@
 ---
 layout: post
-title:  "程序间几种通讯方式基本使用"
-date:   2020-09-21
-categories: socketio gRPC restful jsonp
+title:  "程序间的几种通讯方式基本使用"
+date:   2020-09-26
+categories: Socketio gRPC RESTful GraphQL
 ---
 
 ## `Socketio`  
@@ -124,7 +124,9 @@ if __name__ == '__main__':
 
 ## gRPC  
 
-是 Google 开源的基于 Protobuf 和 Http2.0 协议的通信框架，  
+是 Google 开源的基于 Protobuf 和 Http2.0 协议的通信框架，跨平台跨语言。
+Protobuf优势在于灵活高效，由于是二进制数据，所以其占用的内存比类似于xml、json等传统数据格式更小，传输和解析的效率也更高。  
+
 python里使用需要安装三个包`grpcio、protobuf、grpcio_tools`  
 protobuf协议文件定义类似如下(dating.proto)：  
 ```golang
@@ -267,7 +269,7 @@ func main(){
 }
 ```
 
-# RESTful
+## RESTful
 
 全称为(Representational State Transfer)表现层状态转化  
 表现层指资源的表现层，状态转化是指数据的状态和变化转化为HTTP的状态去体现出来。  
@@ -380,3 +382,75 @@ $ curl localhost:5000/tasks
 ]
 ```
 先获取task列表（三个task），再通过PUT方法增加一个task，再次获取task列表，发现多了一个id为5的task。  
+
+## GraphQL
+由Facebook于2015年推出的一种用于 API 的查询语言  
+GraphQL 既是一种用于 API 的查询语言也是一个满足你数据查询的运行时。 GraphQL 对你的 API 中的数据提供了一套易于理解的完整描述，使得客户端能够准确地获得它需要的数据，而且没有任何冗余，也让 API 更容易地随着时间推移而演进，还能用于构建强大的开发者工具。  
+
+特点:  
+> 需要什么就获取什么数据  
+> 支持关系数据的查询  
+> API无需定义各种路由，完全数据驱动  
+> 无需管理API版本，一个版本持续演进  
+> 支持大部分主流开发语言和平台  
+> 强大的配套开发工具  
+
+用Koa.js实现一个简单GraphQL服务：  
+安装koa相关依赖：  
+```bash
+npm install koa koa-mount koa-graphql
+```
+server.js：
+```javascript
+const Koa = require('koa');
+const mount = require('koa-mount');
+const graphqlHTTP = require('koa-graphql');
+
+const app = new Koa();
+
+
+var { buildSchema } = require('graphql');
+var GraphQLSchema4People = buildSchema(`
+    type Query {
+        name: String
+        age: Int
+        sex: Boolean!
+        hobby: [String]
+    }
+`);
+
+var root = {
+    name: () => {
+        return 'Rootkit';
+    },
+    age: () => {
+        return 99;
+    },
+    sex: () => {
+        return true;
+    },
+    hobby: () => {
+        return ['Coding', 'Badminton', 'Billiards', 'Reading', 'Guitar'];
+    },
+}
+
+
+app.use(mount('/graphql', graphqlHTTP({
+    schema: GraphQLSchema4People,
+    rootValue: root,
+    graphiql: true
+})));
+
+app.listen(4444);
+```
+开启服务监听4444端口:
+```bash
+node server.js
+```
+然后访问 `http://localhost:4444/graphql`是一个构建好的GraphQL查询页面，可以直接在这使用查询语法查找需要的数据。  
+这里用curl测试查询
+```bash
+$ curl 'http://localhost:4444/graphql?query=\{name%0Ahobby\}' -H 'Content-Type=apllication/json'
+{"data":{"name":"Rootkit","hobby":["Coding","Badminton","Billiards","Reading","Guitar"]}}
+```
+当然graphql不是只能做查询，增删改查都可以，这里只举例查询。
