@@ -23,6 +23,7 @@ categories: MicroArchitecture Distributed
 
 很好，依据设想画出以下架构图：
 
+![不太完整的架构图](/note/assets/micro.png)
 
 
 ## 0x03
