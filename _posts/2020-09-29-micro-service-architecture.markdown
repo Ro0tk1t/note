@@ -120,7 +120,7 @@ $ mkdir communicate
 $ protoc --go_out=./communicate/ --go-grpc_out=./communicate/ --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative communicate.proto
 ```
 
-### 0x04
+## 0x04
 
 接着开始做web层的东西，准备用gin和vue做了
 web.go:  
@@ -240,6 +240,7 @@ index.html:
 ```html
 <html>
     <head>
+    {% raw %}
         {{ block "css.tmpl" . }}{{end}}
         <title>{{ .title }}</title>
     </head>
@@ -295,6 +296,7 @@ index.html:
         {{ block "footer.tmpl" . }}{{end}}
         <script src="js/tasks.js"></script>
     </body>
+    {% endraw %}
 </html>
 ```
 tasks.js:  
