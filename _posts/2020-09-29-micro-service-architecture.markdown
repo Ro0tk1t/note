@@ -123,7 +123,7 @@ $ protoc --go_out=./communicate/ --go-grpc_out=./communicate/ --go_opt=paths=sou
 
 ## 0x04
 
-接着开始做web层的东西，准备用gin和vue做了
+接着开始做web层的东西，准备用gin和vue做了  
 web.go:  
 ```golang
 package main
@@ -237,7 +237,7 @@ func main(){
     r.Run(":8080")
 }
 ```
-index.html:  
+templates/index.html:  
 ```html
 <html>
     <head>
@@ -300,7 +300,7 @@ index.html:
     {% endraw %}
 </html>
 ```
-tasks.js:  
+js/tasks.js:  
 ```javascript
 Vue.createApp({
     delimiters: ['[[', ']]'],
@@ -474,7 +474,7 @@ func main(){
     s.Serve(lis)
 }
 ```
-settings.go :
+conf/settings.go :
 ```golang
 package conf
 
@@ -610,6 +610,95 @@ func init(){
             HeartStubs[host] = heart_client
             election_client := pb.NewElectionsClient(conn)
             ElectionStubs[host] = election_client
+        }
+    }
+}
+```
+utils/tools.go :
+```golang
+package utils
+
+import (
+    "log"
+    "time"
+    "context"
+    "../conf"
+)
+
+var ctx = context.Background()
+
+func GetMinQue() string {
+    var size int32 = 0
+    h := ""
+    for host, node := range conf.Nodes{
+        if size < node.MaxTask{
+            size = node.MaxTask
+            h = host
+        }
+    }
+    return h
+}
+
+func PushTask(que, task_id string){
+    if err := conf.Rdb.Publish(ctx, que, task_id).Err(); err != nil{
+        log.Printf("%v", err)
+    } else {
+        log.Printf("[*] push task(%v) 2  %v", task_id, que)
+    }
+}
+
+func Work(){
+    sub := conf.Rdb.Subscribe(ctx, "test")
+    //sub := conf.Rdb.Subscribe(ctx, conf.LocalHost)
+    for {
+        msg, _ := sub.ReceiveMessage(ctx)
+        id := msg.Payload
+        log.Printf("recv task: %v", id)
+        go start_work(GetTask(id))
+    }
+}
+
+func GetTask(id string) map[string]string {
+    result := conf.Rdb.HGetAll(ctx, id)
+    if result.Err() != nil {
+        return nil
+    }
+    return result.Val()
+}
+
+func start_work(task map[string]string){
+    if task != nil{
+        // TODO:
+        // do some work
+        log.Printf("[*] starting 2 run task: ", task["id"])
+        time.Sleep(10 * time.Second)
+        go NotifyMaster(task["id"])
+        go save_result()
+    }
+}
+
+func NotifyMaster(id string){
+    log.Printf("[+] I finished task: %s", id)
+}
+
+func save_result(){
+    // TODO
+}
+
+func HandlePublic(){
+    sub := conf.Rdb.Subscribe(ctx, conf.PubChannel)
+    for {
+        msg, _ := sub.ReceiveMessage(ctx)
+        msg_ := msg.Payload
+        log.Printf("recv pub msg: %v", msg_)
+        if len(msg_) > 2{
+            flag := string(msg_[0])
+            real_msg := msg_[2:]
+            if flag == "0"{
+                HeardPeopleBeating(real_msg)
+            } else if flag == "1"{
+                //
+            }
         }
     }
 }
@@ -782,7 +871,8 @@ func IsMasterDead(node conf.Node){
 
 ## 0x07
 啊，go写的好累。歇会儿，换docker玩玩。。  
-基于ubuntu做个镜像（Dockerfile）,这里先提前用go build构建了web和rpc的程序
+基于ubuntu做个镜像（Dockerfile）,这里先提前用go build构建了web和rpc的程序  
+go1.15构建出来的elf文件大小比go1.14构建的小了2M多，6的一批  
 ```docker
 FROM ubuntu
 
@@ -893,7 +983,7 @@ RUN sed -i "s/^bind 127.0.0.1 ::1$/bind 0.0.0.0 ::1/" /etc/redis/redis.conf
 重新构建镜像，起docker compose  
 共用后数据都相通了
 
-## 0x10
+## 0x0A
 
 然后得用nginx搞个反向代理，文件名随便取，后缀是conf的，如果不是conf后缀得在nginx默认配置文件里include your/conf/file  
 /etc/nginx/conf.d/a.conf
@@ -911,7 +1001,7 @@ server {
 ```
 这里代理到了81端口  
 
-## 0x11
+## 0x0B
 
 这里是程序运行需要加载的配置文件  
 config.json:  
@@ -946,3 +1036,93 @@ nodes.json
   }
 }
 ```
+
+## 0x0C
+
+最后，如果程序跑在虚拟机或实体机里应该需要开机自启、宕机重启等功能，可以用systemd实现  
+rpc.service :
+```javascript
+[Unit]
+Description=it's rpc service
+
+[Service]
+Type=forking
+RestartSec=60
+WatchdogSec=1
+Environment=NODETYPE='master' DATA='/data/' WORKDIR='dir/to/work/'
+ExecStart=path/to/rpc
+
+[Install]
+WantedBy=multi-user.target
+```
+web.service :
+```javascript
+[Unit]
+Description=it's gin web service
+After=rpc.service
+
+[Service]
+Type=forking
+RestartSec=60
+WatchdogSec=1
+Environment=NODETYPE='master' DATA='/data/' WORKDIR='dir/to/work/'
+ExecStart=path/to/web
+
+[Install]
+WantedBy=multi-user.target
+```
+因为web在启动之时就与grpc服务建立连接，所以web启动之前rpc程序要先启动  
+这里设置宕机60秒后尝试再次启动，并以fock方式启动  
+将service文件放到/etc/systemd/system/目录下  
+设置开机自启：
+```bash
+$ sudo systemctl enable rpc.service
+$ sudo systemctl enable web.service
+```
+如果以docker方式运行，就可以不用systemd方式了，直接用compose方式做容器管理。
+
+## 0x0D
+
+最终的目录结构树如下：
+```bash
+$ tree .
+.
+├── communicate
+│   ├── communicate_grpc.pb.go
+│   └── communicate.pb.go
+├── communicate.proto
+├── conf
+│   ├── config.json
+│   ├── nginx.conf
+│   ├── nodes.json
+│   ├── rpc.service
+│   ├── settings.go
+│   └── web.service
+├── docker-compose.yml
+├── Dockerfile
+├── rpc
+│   ├── rpc
+│   └── server.go
+├── run.sh
+├── utils
+│   ├── election.go
+│   ├── heart.go
+│   └── tools.go
+└── web
+    ├── cache
+    ├── js
+    │   └── tasks.js
+    ├── templates
+    │   ├── create_task.html
+    │   ├── css.tmpl
+    │   ├── footer.tmpl
+    │   ├── index.html
+    │   ├── nav.tmpl
+    │   └── test.html
+    ├── web
+    └── web.go
+
+8 directories, 26 files
+
+```
+其中rpc/rpc和web/web是go build出来的elf文件
