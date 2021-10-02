@@ -1,7 +1,7 @@
 ---
 layout: post
-title:  "dgraph usage"
-date:   2020-11-05
+title:  "dgraph 图库的使用"
+date:   2021-10-02
 categories: dgraph database graphDB
 ---
 
@@ -36,7 +36,7 @@ categories: dgraph database graphDB
 
 在dgraph中我们将实体(当然不一定非要是可见的实体)理解为`type`, 将属性理解为`schema`, 将关系理解为`edge`和`facet`.    
 所以我们可以定义十二平均律的`type`和`schema`:
-```rdf
+```
 # 12.schema
 name: string @lang @index(hash) .
 pitch: float @index(float) .
@@ -50,7 +50,7 @@ type the_equal_temperament_principle {
 }
 ```
 通过rdf语法定义出十二个音：
-```rdf
+```
 # 12.rdf
 <_:小二度> <dgraph.type> "the_equal_temperament_principle" .
 <_:小二度> <name> "小二度"@zh .
@@ -148,7 +148,7 @@ $ dgraph bulk -j 2 -s 12.schema -f 12.rdf
 ## 0x04 (使用)
 
 然后呢，基于十二平均律又发展出了各种调式。自然大调就是其一，于是我们可以增设`type`和`schema`:
-```rdf
+```
 tonic: string @index(hash) .
 MajorScale: [uid] @reverse .
 type major_scale {
@@ -160,7 +160,7 @@ type major_scale {
 }
 ```
 然后确定C大调的音：
-```rdf
+```
 uid(纯八度) <MajorScale> <_:C> .
 <_:C> <dgraph.type> "major_scale" .
 <_:C> <name> "C"@en .
@@ -282,7 +282,7 @@ func main(){
 
 在中国古代，都是使用的五声调式，即宫商角徵羽。对应自然调式的CDEGA，较之少了两个半音。对应到十二平均律就是纯八度、大二度、大三度、纯五度、大六度。   
 同样可以追加`type`和`schema`:
-```rdf
+```
 Five: [uid] @reverse .
 type five {
     name
@@ -293,7 +293,7 @@ type five {
 }
 ```
 五声表示成数据节点就是：
-```rdf
+```
 uid(C) <Five> <_:宫> .
 uid(纯八度) <MajorScale> <_:宫> .
 <_:宫> <dgraph.type> "major_scale" .
