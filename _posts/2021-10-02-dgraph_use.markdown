@@ -168,14 +168,12 @@ uid(纯八度) <MajorScale> <_:C> .
 <_:C> <pitch_interval> "6.0" .
 <_:C> <frequency> "200.000" .
 <_:C> <tonic> "C" .
-<_:C> <tonic> "C" .
 uid(大二度) <MajorScale> <_:D> .
 <_:D> <dgraph.type> "major_scale" .
 <_:D> <name> "D"@en .
 <_:D> <pitch> "100.0" .
 <_:D> <pitch_interval> "1.0" .
 <_:D> <frequency> "112.246" .
-<_:D> <tonic> "D" .
 <_:D> <tonic> "D" .
 uid(大三度) <MajorScale> <_:E> .
 <_:E> <dgraph.type> "major_scale" .
@@ -184,14 +182,12 @@ uid(大三度) <MajorScale> <_:E> .
 <_:E> <pitch_interval> "2.0" .
 <_:E> <frequency> "125.992" .
 <_:E> <tonic> "E" .
-<_:E> <tonic> "E" .
 uid(纯四度) <MajorScale> <_:F> .
 <_:F> <dgraph.type> "major_scale" .
 <_:F> <name> "F"@en .
 <_:F> <pitch> "100.0" .
 <_:F> <pitch_interval> "2.5" .
 <_:F> <frequency> "133.484" .
-<_:F> <tonic> "F" .
 <_:F> <tonic> "F" .
 uid(纯五度) <MajorScale> <_:G> .
 <_:G> <dgraph.type> "major_scale" .
@@ -200,7 +196,6 @@ uid(纯五度) <MajorScale> <_:G> .
 <_:G> <pitch_interval> "3.5" .
 <_:G> <frequency> "149.831" .
 <_:G> <tonic> "G" .
-<_:G> <tonic> "G" .
 uid(大六度) <MajorScale> <_:A> .
 <_:A> <dgraph.type> "major_scale" .
 <_:A> <name> "A"@en .
@@ -208,14 +203,12 @@ uid(大六度) <MajorScale> <_:A> .
 <_:A> <pitch_interval> "4.5" .
 <_:A> <frequency> "168.179" .
 <_:A> <tonic> "A" .
-<_:A> <tonic> "A" .
 uid(大七度) <MajorScale> <_:B> .
 <_:B> <dgraph.type> "major_scale" .
 <_:B> <name> "B"@en .
 <_:B> <pitch> "100.0" .
 <_:B> <pitch_interval> "5.5" .
 <_:B> <frequency> "188.775" .
-<_:B> <tonic> "B" .
 <_:B> <tonic> "B" .
 ```
 这时候需要关联上之前定义的十二平均律的音，所以需要进行upsert操作:
